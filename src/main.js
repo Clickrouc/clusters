@@ -1,6 +1,20 @@
-import './assets/main.css'
+import 'normalize.css/normalize.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'
 
-createApp(App).mount('#app')
+async function initDev() {
+  if (import.meta.env.DEV) {
+    const { worker } = await import('./mocks/browser.js')
+
+    await worker.start()
+  }
+}
+
+initDev()
+  .then(() => {
+    createApp(App).mount('#app')
+  })
+  .catch(() => {
+    console.error('problems on init')
+  })

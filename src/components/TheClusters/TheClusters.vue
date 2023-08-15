@@ -45,14 +45,9 @@ onMounted(() => {
 
 function goBack() {
   itemRefs.value.forEach((item) => {
-    item.style.top = '50%'
-    item.style.left = '50%'
-
+    item.style = ''
     const circle = item.querySelector('.clusters__circle')
-
-    circle.style.width = '500px'
-    circle.style.height = '500px'
-    circle.style.color = 'transparent'
+    circle.style = ''
   })
 
   setTimeout(backHandler.value, 1000)
@@ -173,6 +168,7 @@ function numberWithCommas(x) {
   padding: 16px;
 
   color: transparent;
+  font-size: 0;
 
   border-radius: 50%;
   background-color: #50c55a;

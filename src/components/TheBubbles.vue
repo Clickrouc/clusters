@@ -2,39 +2,37 @@
 import { toRefs } from 'vue'
 
 const props = defineProps({
-  loading: Boolean,
-  centered: Boolean,
-  isData: Boolean
+  stage: String
 })
 
-const { loading, centered, isData } = toRefs(props)
+const { stage } = toRefs(props)
 </script>
 
 <template>
-  <div class="bubbles">
-    <span
+  <div>
+    <div
       v-for="i in Array(6)"
       :key="i"
       class="bubble"
       :class="{
-        animated: !loading,
-        centered: centered || isData,
-        'is-data': isData
+        animated: stage === 'start',
+        centered:
+          stage === 'to-center' || stage === 'loading' || stage === 'result' || stage === 'final',
+        hidden: stage === 'loading' || stage === 'result' || stage === 'final'
       }"
-    ></span>
+    ></div>
   </div>
 </template>
 
 <style lang="scss">
 .bubble {
   position: absolute;
-  display: block;
 
   border-radius: 50%;
 
   transition: all 1s ease-in-out;
 
-  &.is-data {
+  &.hidden {
     opacity: 0;
     visibility: hidden;
   }

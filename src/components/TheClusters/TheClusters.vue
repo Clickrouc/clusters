@@ -1,19 +1,28 @@
 <script setup>
 import { onMounted, ref, toRefs } from 'vue'
-import { clustersConverter } from './clustersConverter'
 import { Tippy } from 'vue-tippy'
 
+import { clustersConverter } from './clustersConverter'
+import ThePopover from './ThePopover.vue'
+
 const props = defineProps({
-  data: Array
+  data: Object,
+  backHandler: Function
 })
 
-const { data } = toRefs(props)
-const itemRefs = ref([])
+const { data, backHandler } = toRefs(props)
 
+const body = ref(null)
+const itemRefs = ref([])
 const convertedData = ref([])
+const commonAudience = ref(null)
 
 onMounted(() => {
-  convertedData.value = clustersConverter(data.value, window.innerWidth, window.innerHeight)
+  convertedData.value = clustersConverter(
+    data.value,
+    body.value.offsetWidth,
+    body.value.offsetHeight
+  )
 
   setTimeout(() => {
     itemRefs.value.forEach((item, index) => {
@@ -21,135 +30,162 @@ onMounted(() => {
       item.style.top = `${cluster.y}px`
       item.style.left = `${cluster.x}px`
 
-      const circle = item.querySelector('.circle')
+      const circle = item.querySelector('.clusters__circle')
 
       circle.style.width = `${cluster.elementSize}px`
       circle.style.height = `${cluster.elementSize}px`
-      circle.style.backgroundColor = cluster.likely_to_buy ? '#50C55A' : 'rgba(80, 197, 90, 50%)'
+      circle.style.backgroundColor = cluster.likely_to_buy ? '#50C55A' : 'rgba(148, 148, 148, 0.50)'
+      circle.style.fontSize = `${cluster.elementSize * 0.12 < 8 ? 8 : cluster.elementSize * 0.12}px`
+      circle.style.color = '#fff'
     })
   }, 100)
+
+  commonAudience.value = data.value.clusters.reduce((acc, curr) => acc + curr.cluster_size, 0)
 })
+
+function goBack() {
+  itemRefs.value.forEach((item) => {
+    item.style.top = '50%'
+    item.style.left = '50%'
+
+    const circle = item.querySelector('.clusters__circle')
+
+    circle.style.width = '500px'
+    circle.style.height = '500px'
+    circle.style.color = 'transparent'
+  })
+
+  setTimeout(backHandler.value, 1000)
+}
+
+function numberWithCommas(x) {
+  if (!x) return ''
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
 </script>
 
 <template>
-  <div v-if="convertedData.length" class="clusters">
-    <div v-for="item in convertedData" :key="item.cluster_name" class="cluster" ref="itemRefs">
-      <Tippy max-width="none" placement="auto" animation="shift-away" :arrow="false">
-        <div class="circle">
-          <span>{{ item.cluster_name }}</span>
-        </div>
-        <template #content>
-          <div class="popover">
-            <div class="popover__container">
-              <div class="popover__left">Название:</div>
+  <div class="clusters">
+    <div class="clusters__header">
+      <button class="clusters__back" @click="goBack">Вернуться</button>
 
-              <div class="popover__right">{{ item.cluster_name }}</div>
-            </div>
+      <div class="clusters__total">
+        <span><b>Общая аудитория:</b> {{ numberWithCommas(commonAudience) }}</span>
+        <span><b>Целевая аудитория:</b> {{ numberWithCommas(data.total_target_audience) }}</span>
+      </div>
+    </div>
 
-            <div class="popover__container">
-              <div class="popover__left">Размер:</div>
-
-              <div class="popover__right">{{ item.cluster_size }}</div>
-            </div>
-
-            <div class="popover__container">
-              <div class="popover__left">Описание:</div>
-
-              <div class="popover__right">{{ item.description }}</div>
-            </div>
-
-            <div class="popover__container">
-              <div class="popover__left">Топ мест:</div>
-
-              <div class="popover__right">
-                <ul>
-                  <li v-for="(transaction, index) in item.frequent_transactions" :key="index">
-                    {{ transaction }}
-                  </li>
-                </ul>
-              </div>
-            </div>
+    <div ref="body" class="clusters__body">
+      <div
+        v-for="item in convertedData"
+        :key="item.cluster_name"
+        class="clusters__cluster"
+        ref="itemRefs"
+      >
+        <Tippy max-width="none" placement="auto" animation="shift-away" :arrow="false">
+          <div class="clusters__circle">
+            <span class="clusters__name">{{ item.cluster_name }}</span>
           </div>
-        </template>
-      </Tippy>
+          <template #content>
+            <ThePopover :item="item" />
+          </template>
+        </Tippy>
+      </div>
     </div>
   </div>
 </template>
 
 <style lang="scss">
-.cluster {
+.clusters {
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+  height: 100%;
+  padding: 72px;
+}
+
+.clusters__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.clusters__back {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+
+  color: #50c55a;
+  font-size: 18px;
+  font-weight: 500;
+
+  background-color: transparent;
+  border: 0;
+  cursor: pointer;
+
+  &::before {
+    flex-shrink: 0;
+    width: 24px;
+    height: 22px;
+
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='24' fill='none'%3E%3Cpath fill='%2350C55A' d='M.94 10.94a1.5 1.5 0 0 0 0 2.12l9.545 9.547a1.5 1.5 0 1 0 2.122-2.122L4.12 12l8.486-8.485a1.5 1.5 0 1 0-2.122-2.122L.94 10.94ZM26 10.5H2v3h24v-3Z'/%3E%3C/svg%3E")
+      center no-repeat;
+    background-size: contain;
+
+    content: '';
+  }
+}
+
+.clusters__total {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  color: #213949;
+
+  b {
+    font-weight: 600;
+  }
+}
+
+.clusters__body {
+  position: relative;
+  flex: 1;
+}
+
+.clusters__cluster {
   position: absolute;
   top: 50%;
   left: 50%;
 
   transition: all 1s ease-in-out;
   transform: translate(-50%, -50%);
-
-  .circle {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 500px;
-    height: 500px;
-    padding: 16px;
-
-    border-radius: 50%;
-    background-color: #50c55a;
-    cursor: pointer;
-
-    transition: all 1s ease-in-out;
-  }
-
-  span {
-    overflow: hidden;
-
-    color: #fff;
-    font-size: 30px;
-    text-align: center;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
 }
 
-[data-tippy-root] {
-  .tippy-box {
-    padding: 32px 40px 50px;
-
-    color: #213949;
-
-    background-color: #fff;
-    border: 1px solid #50c55a;
-    border-radius: 22px;
-    box-shadow: 2px 9px 15px 0 rgba(0, 0, 0, 0.1);
-  }
-}
-
-.popover {
+.clusters__circle {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
+  justify-content: center;
+  align-items: center;
+  width: 500px;
+  height: 500px;
+  padding: 16px;
 
-  &__container {
-    display: flex;
-    gap: 20px;
-  }
+  color: transparent;
 
-  &__left {
-    flex-shrink: 0;
-    width: 91px;
+  border-radius: 50%;
+  background-color: #50c55a;
+  cursor: pointer;
 
-    font-weight: 600;
-  }
+  transition: all 1s ease-in-out;
+}
 
-  &__right {
-    width: 615px;
+.clusters__name {
+  overflow: hidden;
 
-    ul {
-      margin: 0;
-      padding: 0;
-
-      list-style: none;
-    }
-  }
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 </style>
